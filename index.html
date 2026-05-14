@@ -123,7 +123,7 @@ function saveContactToDevice() {
     showToast('Preencha pelo menos o nome');
     return;
   }
-  downloadVCF();
+  downloadpdf();
 }
  
 const sectionMeta = {
@@ -296,21 +296,21 @@ function savePublicContact() {
     const parts = card.nome.split(' ');
     const last = parts.length > 1 ? parts.pop() : '';
     const first = parts.join(' ');
-    let vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first};;;\nFN:${card.nome}\n`;
-    if (card.cargo)   vcf += `TITLE:${card.cargo}\n`;
-    if (card.empresa) vcf += `ORG:${card.empresa}\n`;
-    if (card.telemovel) vcf += `TEL;TYPE=CELL:${card.telemovel}\n`;
-    if (card.telefone_empresa) vcf += `TEL;TYPE=WORK:${card.telefone_empresa}\n`;
-    if (card.email)   vcf += `EMAIL:${card.email}\n`;
-    if (card.email_empresa) vcf += `EMAIL;TYPE=WORK:${card.email_empresa}\n`;
-    if (card.website) vcf += `URL:${card.website}\n`;
-    if (card.address) vcf += `ADR;TYPE=WORK:;;${card.address};;;;\n`;
-    if (card.about)   vcf += `NOTE:${card.about}\n`;
-    vcf += `END:VCARD`;
-    const blob = new Blob([vcf], { type: 'text/vcard' });
+    let pdf = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first};;;\nFN:${card.nome}\n`;
+    if (card.cargo)   pdf += `TITLE:${card.cargo}\n`;
+    if (card.empresa) pdf += `ORG:${card.empresa}\n`;
+    if (card.telemovel) pdf += `TEL;TYPE=CELL:${card.telemovel}\n`;
+    if (card.telefone_empresa) pdf += `TEL;TYPE=WORK:${card.telefone_empresa}\n`;
+    if (card.email)   pdf += `EMAIL:${card.email}\n`;
+    if (card.email_empresa) pdf += `EMAIL;TYPE=WORK:${card.email_empresa}\n`;
+    if (card.website) pdf += `URL:${card.website}\n`;
+    if (card.address) pdf += `ADR;TYPE=WORK:;;${card.address};;;;\n`;
+    if (card.about)   pdf += `NOTE:${card.about}\n`;
+    pdf += `END:VCARD`;
+    const blob = new Blob([pdf], { type: 'text/vcard' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = (card.nome.replace(/\s+/g, '_') || 'contact') + '.vcf';
+    a.download = (card.nome.replace(/\s+/g, '_') || 'contact') + '.pdf';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -784,20 +784,20 @@ function getExportCard() {
 function getFirstPhone() { return document.getElementById('f-phone')?.value.trim()||''; }
 function getFirstEmail() { return document.getElementById('f-email')?.value.trim()||''; }
  
-function downloadVCF() {
+function downloadpdf() {
   const c = getExportCard(); if (!c.nome) { showToast('Preencha pelo menos o nome.'); return; }
   const parts = c.nome.split(' '); const last = parts.length>1?parts.pop():''; const first = parts.join(' ');
-  let vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first};;;\nFN:${c.nome}\n`;
-  if (c.cargo)   vcf += `TITLE:${c.cargo}\n`;
-  if (c.empresa) vcf += `ORG:${c.empresa}\n`;
-  if (c.telemovel) vcf += `TEL;TYPE=CELL:${c.telemovel}\n`;
-  if (c.email)   vcf += `EMAIL:${c.email}\n`;
-  if (c.website) vcf += `URL:${c.website}\n`;
-  if (c.address) vcf += `ADR;TYPE=WORK:;;${c.address};;;;\n`;
-  vcf += `END:VCARD`;
-  const blob = new Blob([vcf],{type:'text/vcard'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (c.nome.replace(/\s+/g,'_')||'contact')+'.vcf'; a.click(); URL.revokeObjectURL(a.href);
-  showToast('VCF descarregado!');
+  let pdf = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first};;;\nFN:${c.nome}\n`;
+  if (c.cargo)   pdf += `TITLE:${c.cargo}\n`;
+  if (c.empresa) pdf += `ORG:${c.empresa}\n`;
+  if (c.telemovel) pdf += `TEL;TYPE=CELL:${c.telemovel}\n`;
+  if (c.email)   pdf += `EMAIL:${c.email}\n`;
+  if (c.website) pdf += `URL:${c.website}\n`;
+  if (c.address) pdf += `ADR;TYPE=WORK:;;${c.address};;;;\n`;
+  pdf += `END:VCARD`;
+  const blob = new Blob([pdf],{type:'text/vcard'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (c.nome.replace(/\s+/g,'_')||'contact')+'.pdf'; a.click(); URL.revokeObjectURL(a.href);
+  showToast('pdf descarregado!');
 }
  
 function downloadQR() {
@@ -1159,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         <p class="text-sm text-gray-500">Escolha o formato de exportação para o cartão.</p>
         <div id="export-select-msg" class="text-sm text-amber-600 bg-amber-50 rounded-lg p-3 hidden"><i data-lucide="alert-circle" class="w-4 h-4 inline"></i> Preencha os dados antes de exportar.</div>
         <div id="export-actions" class="flex gap-3">
-         <button onclick="downloadVCF()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"><i data-lucide="file-text" class="w-5 h-5"></i> Ficheiro VCF</button>
+         <button onclick="downloadpdf()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"><i data-lucide="file-text" class="w-5 h-5"></i> Ficheiro pdf</button>
          <button onclick="downloadQR()"  class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"><i data-lucide="qr-code"   class="w-5 h-5"></i> QR Code</button>
         </div>
        </div>
@@ -1249,14 +1249,14 @@ function getFirstPhone() { return document.getElementById('f-phone').value||''; 
 function getFirstEmail() { return document.getElementById('f-email').value||''; }
  
 function adminDownloadCard(card) {
-  let vcf = `BEGIN:VCARD\nVERSION:3.0\nFN:${card.nome}\nTITLE:${card.cargo||''}\nORG:${card.empresa||''}\n`;
-  if (card.telemovel)        vcf += `TEL;TYPE=CELL:${card.telemovel}\n`;
-  if (card.telefone_empresa) vcf += `TEL;TYPE=WORK:${card.telefone_empresa}\n`;
-  if (card.email)            vcf += `EMAIL:${card.email}\n`;
-  if (card.email_empresa)    vcf += `EMAIL;TYPE=WORK:${card.email_empresa}\n`;
-  vcf += `END:VCARD`;
-  const blob = new Blob([vcf],{type:'text/vcard'});
-  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(card.nome.replace(/\s+/g,'_')||'contact')+'.vcf'; a.click(); URL.revokeObjectURL(a.href);
+  let pdf = `BEGIN:VCARD\nVERSION:3.0\nFN:${card.nome}\nTITLE:${card.cargo||''}\nORG:${card.empresa||''}\n`;
+  if (card.telemovel)        pdf += `TEL;TYPE=CELL:${card.telemovel}\n`;
+  if (card.telefone_empresa) pdf += `TEL;TYPE=WORK:${card.telefone_empresa}\n`;
+  if (card.email)            pdf += `EMAIL:${card.email}\n`;
+  if (card.email_empresa)    pdf += `EMAIL;TYPE=WORK:${card.email_empresa}\n`;
+  pdf += `END:VCARD`;
+  const blob = new Blob([pdf],{type:'text/vcard'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(card.nome.replace(/\s+/g,'_')||'contact')+'.pdf'; a.click(); URL.revokeObjectURL(a.href);
   showToast('Cartão descarregado!');
 }
   </script>
