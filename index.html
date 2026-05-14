@@ -7,6 +7,8 @@
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
   <script src="/_sdk/element_sdk.js" type="text/javascript"></script>
@@ -277,19 +279,54 @@ function displayPublicCard(card) {
       </div>
     </div>
  
-    <!-- ✅ PATCH 2: id adicionado + onclick sem JSON (usa viewingPublicCard global) -->
-    <button id="public-save-btn" onclick="savePublicContact()"
-      style="position:fixed;bottom:clamp(16px,4vw,24px);right:clamp(16px,4vw,24px);width:clamp(48px,12vw,58px);height:clamp(48px,12vw,58px);border-radius:50%;background:${color};color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.2);z-index:100;transition:transform 0.2s;">
-      <i data-lucide="save" style="width:46%;height:46%;"></i>
-    </button>
+    <!-- Floating action button with export menu -->
+    <div id="public-fab-container" style="position:fixed;bottom:clamp(16px,4vw,24px);right:clamp(16px,4vw,24px);z-index:100;display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
+      <!-- Export menu options (hidden by default) -->
+      <div id="public-fab-menu" style="display:none;flex-direction:column;align-items:flex-end;gap:8px;">
+        <button onclick="savePublicContact()" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:24px;background:white;color:#333;border:none;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,0.15);font-size:13px;font-weight:600;white-space:nowrap;">
+          <i data-lucide="contact" style="width:16px;height:16px;color:${color};"></i> Guardar Contacto (.vcf)
+        </button>
+        <button onclick="downloadBusinessCardPNG()" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:24px;background:white;color:#333;border:none;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,0.15);font-size:13px;font-weight:600;white-space:nowrap;">
+          <i data-lucide="image" style="width:16px;height:16px;color:${color};"></i> Guardar como PNG
+        </button>
+        <button onclick="downloadBusinessCardPDF()" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:24px;background:white;color:#333;border:none;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,0.15);font-size:13px;font-weight:600;white-space:nowrap;">
+          <i data-lucide="file-text" style="width:16px;height:16px;color:${color};"></i> Guardar como PDF
+        </button>
+      </div>
+      <!-- Main FAB button -->
+      <button id="public-save-btn" onclick="toggleFabMenu()"
+        style="width:clamp(48px,12vw,58px);height:clamp(48px,12vw,58px);border-radius:50%;background:${color};color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.2);transition:transform 0.2s;">
+        <i data-lucide="download" style="width:46%;height:46%;"></i>
+      </button>
+    </div>
+
+    <!-- Hidden business card element for rendering -->
+    <div id="business-card-render" style="position:fixed;left:-9999px;top:0;width:900px;height:500px;"></div>
   `;
   lucide.createIcons();
 }
  
 /* ✅ PATCH 3: usa viewingPublicCard em vez de JSON + feedback visual no botão */
+function toggleFabMenu() {
+  const menu = document.getElementById('public-fab-menu');
+  if (!menu) return;
+  const isOpen = menu.style.display === 'flex';
+  menu.style.display = isOpen ? 'none' : 'flex';
+  const btn = document.getElementById('public-save-btn');
+  if (btn) {
+    btn.innerHTML = isOpen
+      ? '<i data-lucide="download" style="width:46%;height:46%;"></i>'
+      : '<i data-lucide="x" style="width:46%;height:46%;"></i>';
+    lucide.createIcons();
+  }
+}
+
 function savePublicContact() {
   const card = viewingPublicCard;
   if (!card) return;
+  // close menu
+  const menu = document.getElementById('public-fab-menu');
+  if (menu) menu.style.display = 'none';
   const btn = document.getElementById('public-save-btn');
   if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
   try {
@@ -315,7 +352,6 @@ function savePublicContact() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
-    // Feedback visual: botão fica verde com ✓ por 2 segundos
     if (btn) {
       btn.style.background = '#059669';
       btn.style.opacity = '1';
@@ -324,22 +360,177 @@ function savePublicContact() {
       setTimeout(() => {
         btn.disabled = false;
         btn.style.background = card.cor_principal || '#1a3a6b';
-        btn.innerHTML = '<i data-lucide="save" style="width:46%;height:46%;"></i>';
+        btn.innerHTML = '<i data-lucide="download" style="width:46%;height:46%;"></i>';
         lucide.createIcons();
       }, 2000);
     }
-    const msg = document.createElement('div');
-    msg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;';
-    msg.textContent = 'Contacto guardado com sucesso!';
-    document.body.appendChild(msg);
-    setTimeout(() => msg.remove(), 3000);
+    showFloatingMsg('Contacto guardado com sucesso!', '#10b981');
   } catch (err) {
     if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
-    const msg = document.createElement('div');
-    msg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;';
-    msg.textContent = 'Erro ao guardar contacto';
-    document.body.appendChild(msg);
-    setTimeout(() => msg.remove(), 3000);
+    showFloatingMsg('Erro ao guardar contacto', '#ef4444');
+  }
+}
+
+function showFloatingMsg(text, bg) {
+  const msg = document.createElement('div');
+  msg.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);background:${bg};color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;`;
+  msg.textContent = text;
+  document.body.appendChild(msg);
+  setTimeout(() => msg.remove(), 3000);
+}
+
+function buildBusinessCardHTML(card, publicUrl) {
+  const color = card.cor_principal || '#00aacc';
+  const avatarSrc = card.avatar_url || '';
+  const logoSrc = card.cover_url || '';
+  const name = card.nome || '';
+  const role = card.cargo || '';
+  const phone1 = card.telemovel || '';
+  const phone2 = card.telefone_empresa || '';
+  const email1 = card.email || '';
+  const email2 = card.email_empresa || card.fax || '';
+  const website = card.website || '';
+
+  return `
+  <div style="width:900px;height:500px;display:flex;font-family:'Segoe UI',Arial,sans-serif;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.2);">
+    <!-- LEFT PANEL: white, contact info -->
+    <div style="width:400px;flex-shrink:0;background:white;display:flex;flex-direction:column;justify-content:center;padding:40px 50px;gap:0;">
+      ${phone1 || phone2 ? `
+      <div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;">
+        <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </div>
+        <div>
+          ${phone1 ? `<div style="font-size:17px;font-weight:600;color:${color};line-height:1.5;">${phone1}</div>` : ''}
+          ${phone2 ? `<div style="font-size:17px;font-weight:600;color:${color};line-height:1.5;">${phone2}</div>` : ''}
+        </div>
+      </div>` : ''}
+      ${email1 || email2 ? `
+      <div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;">
+        <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div>
+          ${email1 ? `<div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${email1}</div>` : ''}
+          ${email2 ? `<div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${email2}</div>` : ''}
+        </div>
+      </div>` : ''}
+      ${website ? `
+      <div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;">
+        <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${website}</div>
+      </div>` : ''}
+    </div>
+    <!-- RIGHT PANEL: colored, QR + name -->
+    <div style="flex:1;background:${color};position:relative;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;padding:32px 36px;overflow:hidden;">
+      <!-- Diagonal white stripes decoration -->
+      <div style="position:absolute;top:-60px;left:-80px;width:200px;height:200px;background:rgba(255,255,255,0.12);border-radius:50%;"></div>
+      <div style="position:absolute;top:40px;right:-40px;width:120px;height:400px;background:rgba(255,255,255,0.08);transform:rotate(-20deg);border-radius:40px;"></div>
+      <div style="position:absolute;bottom:-60px;left:20px;width:180px;height:180px;background:rgba(255,255,255,0.1);border-radius:50%;"></div>
+      <!-- QR Code and name area -->
+      <div style="position:relative;z-index:2;width:100%;display:flex;flex-direction:column;align-items:center;gap:12px;">
+        <!-- QR Code box -->
+        <div style="background:white;border-radius:12px;padding:12px;display:inline-flex;align-items:center;justify-content:center;">
+          <canvas id="bc-qr-canvas"></canvas>
+        </div>
+        <!-- Name -->
+        <div style="text-align:center;color:white;">
+          <div style="font-size:20px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">${name}</div>
+          <div style="font-size:13px;font-weight:400;letter-spacing:1px;margin-top:4px;opacity:0.9;text-transform:uppercase;">${role}</div>
+        </div>
+      </div>
+      <!-- Logo bottom right -->
+      ${logoSrc ? `<div style="position:relative;z-index:2;margin-top:auto;"><img src="${logoSrc}" style="max-height:50px;max-width:100px;object-fit:contain;filter:brightness(0) invert(1);opacity:0.9;"></div>` : `<div style="position:relative;z-index:2;margin-top:auto;color:white;font-size:28px;font-weight:900;letter-spacing:-1px;opacity:0.9;">i<span style="color:rgba(255,255,255,0.7);">3</span>S</div>`}
+    </div>
+  </div>`;
+}
+
+async function renderBusinessCardWithQR() {
+  const card = viewingPublicCard;
+  if (!card) return null;
+  const publicUrl = window.location.href;
+
+  const container = document.getElementById('business-card-render');
+  if (!container) return null;
+
+  container.style.display = 'block';
+  container.innerHTML = buildBusinessCardHTML(card, publicUrl);
+
+  // Generate QR code into the canvas element
+  await new Promise((resolve) => {
+    const canvas = container.querySelector('#bc-qr-canvas');
+    if (canvas && typeof QRCode !== 'undefined') {
+      QRCode.toCanvas(canvas, publicUrl, { width: 160, margin: 1, color: { dark: '#000000', light: '#ffffff' } }, () => resolve());
+    } else { resolve(); }
+  });
+
+  return container;
+}
+
+async function downloadBusinessCardPNG() {
+  const menu = document.getElementById('public-fab-menu');
+  if (menu) menu.style.display = 'none';
+
+  const btn = document.getElementById('public-save-btn');
+  if (btn) { btn.innerHTML = '<i data-lucide="loader" style="width:46%;height:46%;animation:spin 1s linear infinite;"></i>'; lucide.createIcons(); }
+
+  try {
+    const container = await renderBusinessCardWithQR();
+    if (!container) { showFloatingMsg('Erro ao gerar imagem', '#ef4444'); return; }
+
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: null, logging: false });
+    const link = document.createElement('a');
+    const name = (viewingPublicCard?.nome || 'cartao').replace(/\s+/g, '_');
+    link.download = name + '_cartao.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    container.style.display = 'none';
+    showFloatingMsg('Imagem PNG guardada!', '#10b981');
+  } catch (err) {
+    showFloatingMsg('Erro ao gerar PNG', '#ef4444');
+  } finally {
+    if (btn) {
+      btn.style.background = viewingPublicCard?.cor_principal || '#1a3a6b';
+      btn.innerHTML = '<i data-lucide="download" style="width:46%;height:46%;"></i>';
+      lucide.createIcons();
+    }
+    const c = document.getElementById('business-card-render');
+    if (c) c.style.display = 'none';
+  }
+}
+
+async function downloadBusinessCardPDF() {
+  const menu = document.getElementById('public-fab-menu');
+  if (menu) menu.style.display = 'none';
+
+  const btn = document.getElementById('public-save-btn');
+  if (btn) { btn.innerHTML = '<i data-lucide="loader" style="width:46%;height:46%;animation:spin 1s linear infinite;"></i>'; lucide.createIcons(); }
+
+  try {
+    const container = await renderBusinessCardWithQR();
+    if (!container) { showFloatingMsg('Erro ao gerar PDF', '#ef4444'); return; }
+
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false });
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    // Business card size: 3.5in x 2in = 252pt x 144pt (landscape)
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [504, 288] });
+    pdf.addImage(imgData, 'PNG', 0, 0, 504, 288, undefined, 'FAST');
+    const name = (viewingPublicCard?.nome || 'cartao').replace(/\s+/g, '_');
+    pdf.save(name + '_cartao.pdf');
+    showFloatingMsg('PDF guardado!', '#10b981');
+  } catch (err) {
+    showFloatingMsg('Erro ao gerar PDF', '#ef4444');
+  } finally {
+    if (btn) {
+      btn.style.background = viewingPublicCard?.cor_principal || '#1a3a6b';
+      btn.innerHTML = '<i data-lucide="download" style="width:46%;height:46%;"></i>';
+      lucide.createIcons();
+    }
+    const c = document.getElementById('business-card-render');
+    if (c) c.style.display = 'none';
   }
 }
  
@@ -804,11 +995,118 @@ function downloadQR() {
   const c = getExportCard(); if (!c.nome) { showToast('Preencha pelo menos o nome.'); return; }
   const container = document.getElementById('qr-container'); const qrDiv = document.getElementById('qr-canvas');
   qrDiv.innerHTML = ''; container.classList.remove('hidden');
-  const vCardData = `BEGIN:VCARD\nVERSION:3.0\nFN:${c.nome}\nTEL:${c.telemovel||''}\nEMAIL:${c.email||''}\nORG:${c.empresa||''}\nTITLE:${c.cargo||''}\nEND:VCARD`;
+  // QR code links to the public card URL if editingCard exists, otherwise vCard data
+  let qrContent;
+  if (editingCard && editingCard.id) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    qrContent = baseUrl + '?view=' + editingCard.id;
+  } else {
+    qrContent = `BEGIN:VCARD\nVERSION:3.0\nFN:${c.nome}\nTEL:${c.telemovel||''}\nEMAIL:${c.email||''}\nORG:${c.empresa||''}\nTITLE:${c.cargo||''}\nEND:VCARD`;
+  }
   setTimeout(() => {
-    if (typeof QRCode !== 'undefined') new QRCode(qrDiv,{text:vCardData,width:200,height:200,colorDark:currentColor,colorLight:'#ffffff'});
+    if (typeof QRCode !== 'undefined') new QRCode(qrDiv,{text:qrContent,width:200,height:200,colorDark:currentColor,colorLight:'#ffffff'});
     else showToast('Erro ao gerar QR Code - tente novamente');
   }, 100);
+}
+
+async function downloadCardPNG() {
+  const c = getExportCard(); if (!c.nome) { showToast('Preencha pelo menos o nome.'); return; }
+  showToast('A gerar imagem PNG...');
+  // Build a temporary card object
+  const tempCard = {
+    ...c,
+    cor_principal: currentColor,
+    avatar_url: avatarImageData instanceof File ? null : (editingCard?.avatar_url || null),
+    cover_url: coverImageData instanceof File ? null : (editingCard?.cover_url || null)
+  };
+  const publicUrl = editingCard?.id
+    ? window.location.origin + window.location.pathname + '?view=' + editingCard.id
+    : window.location.href;
+
+  const container = document.getElementById('editor-card-render');
+  if (!container) return;
+  container.style.display = 'block';
+  container.innerHTML = buildEditorCardHTML(tempCard, publicUrl);
+  await new Promise(resolve => {
+    const canvas = container.querySelector('#ed-qr-canvas');
+    if (canvas && typeof QRCode !== 'undefined') {
+      QRCode.toCanvas(canvas, publicUrl, { width: 160, margin: 1 }, () => resolve());
+    } else resolve();
+  });
+  try {
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const link = document.createElement('a');
+    link.download = (c.nome.replace(/\s+/g,'_') || 'cartao') + '_cartao.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('PNG guardado!');
+  } catch(e) { showToast('Erro ao gerar PNG'); }
+  container.style.display = 'none';
+}
+
+async function downloadCardPDF() {
+  const c = getExportCard(); if (!c.nome) { showToast('Preencha pelo menos o nome.'); return; }
+  showToast('A gerar PDF...');
+  const tempCard = {
+    ...c,
+    cor_principal: currentColor,
+    avatar_url: avatarImageData instanceof File ? null : (editingCard?.avatar_url || null),
+    cover_url: coverImageData instanceof File ? null : (editingCard?.cover_url || null)
+  };
+  const publicUrl = editingCard?.id
+    ? window.location.origin + window.location.pathname + '?view=' + editingCard.id
+    : window.location.href;
+
+  const container = document.getElementById('editor-card-render');
+  if (!container) return;
+  container.style.display = 'block';
+  container.innerHTML = buildEditorCardHTML(tempCard, publicUrl);
+  await new Promise(resolve => {
+    const canvas = container.querySelector('#ed-qr-canvas');
+    if (canvas && typeof QRCode !== 'undefined') {
+      QRCode.toCanvas(canvas, publicUrl, { width: 160, margin: 1 }, () => resolve());
+    } else resolve();
+  });
+  try {
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/png');
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [504, 288] });
+    pdf.addImage(imgData, 'PNG', 0, 0, 504, 288, undefined, 'FAST');
+    pdf.save((c.nome.replace(/\s+/g,'_') || 'cartao') + '_cartao.pdf');
+    showToast('PDF guardado!');
+  } catch(e) { showToast('Erro ao gerar PDF'); }
+  container.style.display = 'none';
+}
+
+function buildEditorCardHTML(card, publicUrl) {
+  const color = card.cor_principal || '#00aacc';
+  const name = card.nome || '';
+  const role = card.cargo || '';
+  const phone1 = card.telemovel || '';
+  const phone2 = card.telefone_empresa || '';
+  const email1 = card.email || '';
+  const email2 = card.email_empresa || card.fax || '';
+  const website = card.website || '';
+  const logoSrc = card.cover_url || '';
+  return `
+  <div style="width:900px;height:500px;display:flex;font-family:'Segoe UI',Arial,sans-serif;border-radius:16px;overflow:hidden;">
+    <div style="width:400px;flex-shrink:0;background:white;display:flex;flex-direction:column;justify-content:center;padding:40px 50px;gap:0;">
+      ${phone1||phone2?`<div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;"><div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div><div>${phone1?`<div style="font-size:17px;font-weight:600;color:${color};line-height:1.5;">${phone1}</div>`:''} ${phone2?`<div style="font-size:17px;font-weight:600;color:${color};line-height:1.5;">${phone2}</div>`:''}</div></div>`:''}
+      ${email1||email2?`<div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;"><div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><div>${email1?`<div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${email1}</div>`:''} ${email2?`<div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${email2}</div>`:''}</div></div>`:''}
+      ${website?`<div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;"><div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div><div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${website}</div></div>`:''}
+    </div>
+    <div style="flex:1;background:${color};position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 36px;overflow:hidden;gap:16px;">
+      <div style="position:absolute;top:-60px;left:-80px;width:200px;height:200px;background:rgba(255,255,255,0.12);border-radius:50%;"></div>
+      <div style="position:absolute;top:40px;right:-40px;width:120px;height:400px;background:rgba(255,255,255,0.08);transform:rotate(-20deg);border-radius:40px;"></div>
+      <div style="background:white;border-radius:12px;padding:12px;display:inline-flex;align-items:center;justify-content:center;position:relative;z-index:2;"><canvas id="ed-qr-canvas"></canvas></div>
+      <div style="text-align:center;color:white;position:relative;z-index:2;">
+        <div style="font-size:20px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">${name}</div>
+        <div style="font-size:13px;font-weight:400;letter-spacing:1px;margin-top:4px;opacity:0.9;text-transform:uppercase;">${role}</div>
+      </div>
+      ${logoSrc?`<img src="${logoSrc}" style="max-height:40px;max-width:80px;object-fit:contain;filter:brightness(0) invert(1);opacity:0.9;position:relative;z-index:2;">`:``}
+    </div>
+  </div>`;
 }
  
 function showToast(msg) {
@@ -1158,9 +1456,11 @@ document.addEventListener('DOMContentLoaded', async function() {
         <h4 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Exportar Cartão</h4>
         <p class="text-sm text-gray-500">Escolha o formato de exportação para o cartão.</p>
         <div id="export-select-msg" class="text-sm text-amber-600 bg-amber-50 rounded-lg p-3 hidden"><i data-lucide="alert-circle" class="w-4 h-4 inline"></i> Preencha os dados antes de exportar.</div>
-        <div id="export-actions" class="flex gap-3">
+        <div id="export-actions" class="flex gap-3 flex-wrap">
          <button onclick="downloadvcf()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"><i data-lucide="file-text" class="w-5 h-5"></i> Ficheiro vcf</button>
          <button onclick="downloadQR()"  class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-600 transition"><i data-lucide="qr-code"   class="w-5 h-5"></i> QR Code</button>
+         <button onclick="downloadCardPNG()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-cyan-400 hover:text-cyan-600 transition"><i data-lucide="image" class="w-5 h-5"></i> Cartão PNG</button>
+         <button onclick="downloadCardPDF()" class="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 border-gray-200 text-sm font-medium text-gray-700 hover:border-cyan-400 hover:text-cyan-600 transition"><i data-lucide="file-down" class="w-5 h-5"></i> Cartão PDF</button>
         </div>
        </div>
        <div id="qr-container" class="bg-white rounded-xl p-5 border border-gray-200 hidden">
