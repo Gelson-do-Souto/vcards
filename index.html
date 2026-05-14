@@ -79,7 +79,7 @@
         ['primary_color', config.primary_color || defaultConfig.primary_color]
       ])
     });
-
+ 
     function updateColorInUI(color) {
       document.querySelectorAll('[data-color-target]').forEach(el => {
         if (el.dataset.colorTarget === 'bg') el.style.background = color;
@@ -89,12 +89,12 @@
       currentColor = color;
       updatePreview();
     }
-
+ 
     function updateFontInUI(font) {
       const stack = `${font}, Arial, sans-serif`;
       document.documentElement.style.fontFamily = stack;
     }
-
+ 
     function updateFontSizeInUI(size) {
       document.documentElement.style.fontSize = size + 'px';
     }
@@ -116,7 +116,7 @@ let emailFields = [];
 const ADMIN_EMAILS = ['admin@vcard.ao'];
 let adminSearchQuery = '';
 let adminCompanyFilter = '';
-
+ 
 function saveContactToDevice() {
   const vcard = getExportCard();
   if (!vcard.nome) {
@@ -125,7 +125,7 @@ function saveContactToDevice() {
   }
   downloadVCF();
 }
-
+ 
 const sectionMeta = {
   dashboard: { title: 'Dashboard', desc: 'Os seus cartões guardados' },
   perfil: { title: 'Perfil', desc: 'Preencha os dados do seu cartão' },
@@ -135,13 +135,13 @@ const sectionMeta = {
   export: { title: 'Exportar', desc: 'Exporte o seu cartão digital' },
   admin: { title: 'Administração', desc: 'Gerencie todos os cartões do sistema' }
 };
-
+ 
 async function initSupabase() {
   const SUPABASE_URL = 'https://tgobchnkeewoonnsesqv.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnb2JjaG5rZWV3b29ubnNlc3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTc4NTgsImV4cCI6MjA5MTczMzg1OH0.-G5sJicu8G-7H7s9MsDGVGu45mz43XtiAoskW5A6zSs';
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
-
+ 
 async function loadPublicCard(cardId) {
   try {
     const sbPublic = supabase.createClient('https://tgobchnkeewoonnsesqv.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRnb2JjaG5rZWV3b29ubnNlc3F2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTc4NTgsImV4cCI6MjA5MTczMzg1OH0.-G5sJicu8G-7H7s9MsDGVGu45mz43XtiAoskW5A6zSs');
@@ -161,7 +161,7 @@ async function loadPublicCard(cardId) {
     if (loading) loading.style.display = 'none';
   }
 }
-
+ 
 async function recordCardVisit(cardId, userId) {
   try {
     const visitKey = `visit_${cardId}_${new Date().toISOString().split('T')[0]}`;
@@ -179,23 +179,23 @@ async function recordCardVisit(cardId, userId) {
     }
   } catch (err) {}
 }
-
+ 
 /* ============================================================
    NOVO DESIGN DO CARTÃO PÚBLICO — layout igual à imagem ARSEG
    ============================================================ */
 function displayPublicCard(card) {
   const color = card.cor_principal || '#1a3a6b';
-
+ 
   /* Avatar */
   const avatarHtml = card.avatar_url
     ? `<img src="${escHtml(card.avatar_url)}" style="width:100%;height:100%;object-fit:cover;">`
     : `<span style="font-size:clamp(36px,12vw,56px);font-weight:800;color:white;">${(card.nome||'?').charAt(0).toUpperCase()}</span>`;
-
+ 
   /* Logo (cover_url usado como logo no topo) */
   const logoHtml = card.cover_url
     ? `<img src="${escHtml(card.cover_url)}" style="max-height:70px;max-width:220px;object-fit:contain;">`
     : '';
-
+ 
   /* Redes sociais */
   const socialDefs = [
     { key: 'linkedin',   label: '<span style="font-style:italic;font-family:Georgia,serif;font-size:22px;font-weight:900;line-height:1;">in</span>', prefix: 'https://linkedin.com/in/' },
@@ -206,7 +206,7 @@ function displayPublicCard(card) {
     { key: 'tiktok',     label: '<i data-lucide="music"      style="width:20px;height:20px;"></i>', prefix: 'https://tiktok.com/@' },
     { key: 'twitter',    label: '<i data-lucide="twitter"    style="width:20px;height:20px;"></i>', prefix: 'https://twitter.com/' }
   ];
-
+ 
   let socialsHtml = '';
   socialDefs.forEach(s => {
     if (card[s.key] && card[s.key].trim()) {
@@ -215,7 +215,7 @@ function displayPublicCard(card) {
         ${s.label}</a>`;
     }
   });
-
+ 
   /* Linhas de contacto */
   function row(icon, content) {
     return `<div style="display:flex;align-items:flex-start;gap:14px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
@@ -223,7 +223,7 @@ function displayPublicCard(card) {
       <span style="font-size:clamp(13px,3.5vw,15px);color:#333;line-height:1.5;word-break:break-word;">${content}</span>
     </div>`;
   }
-
+ 
   let contactsHtml = '';
   if (card.telemovel)        contactsHtml += row('phone',        escHtml(card.telemovel));
   if (card.telefone_empresa) contactsHtml += row('phone-call',   escHtml(card.telefone_empresa));
@@ -233,7 +233,7 @@ function displayPublicCard(card) {
   if (card.fax)              contactsHtml += row('mail',         escHtml(card.fax));
   if (card.address)          contactsHtml += row('map-pin',      `<a href="https://www.google.com/maps/search/${encodeURIComponent(card.address)}" target="_blank" rel="noopener noreferrer" style="color:#333;text-decoration:none;">${escHtml(card.address)}</a>`);
   if (card.horario)          contactsHtml += row('clock',        escHtml(card.horario));
-
+ 
   /* Slogan / about no rodapé */
   const footerHtml = card.about
     ? `<div style="padding:16px 28px 24px;border-top:1px solid #e8e8e8;">
@@ -242,11 +242,11 @@ function displayPublicCard(card) {
         </p>
        </div>`
     : '';
-
+ 
   document.body.innerHTML = `
     <div style="min-height:100vh;background:#eef0f3;display:flex;justify-content:center;align-items:flex-start;padding:clamp(16px,4vw,40px) clamp(12px,4vw,20px);font-family:'Segoe UI',Arial,sans-serif;box-sizing:border-box;overflow-y:auto;">
       <div style="background:white;border-radius:20px;max-width:460px;width:100%;overflow:hidden;box-shadow:0 4px 30px rgba(0,0,0,0.08);margin-bottom:80px;">
-
+ 
         <!-- HEADER: fundo cinza claro, logo + avatar -->
         <div style="background:#eef0f3;display:flex;flex-direction:column;align-items:center;padding:clamp(20px,5vw,32px) 24px 0;">
           ${logoHtml ? `<div style="margin-bottom:20px;text-align:center;">${logoHtml}</div>` : ''}
@@ -255,40 +255,44 @@ function displayPublicCard(card) {
             ${avatarHtml}
           </div>
         </div>
-
+ 
         <!-- CORPO -->
         <div style="padding:clamp(20px,5vw,28px) clamp(20px,5vw,28px) 0;text-align:center;">
           <!-- Nome e cargo -->
           <h1 style="font-size:clamp(20px,6vw,28px);font-weight:800;color:${color};line-height:1.2;margin:0 0 6px;">${escHtml(card.nome||'Sem nome')}</h1>
           ${card.cargo ? `<p style="font-size:clamp(13px,3.5vw,16px);color:#555;font-weight:400;margin:0 0 4px;">${escHtml(card.cargo)}</p>` : ''}
           ${card.departamento ? `<p style="font-size:clamp(12px,3vw,14px);color:#888;margin:0 0 4px;">${escHtml(card.departamento)}</p>` : ''}
-
+ 
           <!-- Redes sociais -->
           ${socialsHtml ? `<div style="display:flex;justify-content:center;gap:10px;margin:16px 0 8px;flex-wrap:wrap;">${socialsHtml}</div>` : '<div style="margin-bottom:16px;"></div>'}
-
+ 
           <!-- Contactos -->
           <div style="text-align:left;margin-top:8px;">
             ${contactsHtml}
           </div>
         </div>
-
+ 
         <!-- RODAPÉ com slogan -->
         ${footerHtml}
       </div>
     </div>
-
-    <!-- Botão flutuante guardar contacto -->
-    <button onclick="savePublicContact('${escHtml(JSON.stringify(card).replace(/'/g, '&#39;'))}')"
+ 
+    <!-- ✅ PATCH 2: id adicionado + onclick sem JSON (usa viewingPublicCard global) -->
+    <button id="public-save-btn" onclick="savePublicContact()"
       style="position:fixed;bottom:clamp(16px,4vw,24px);right:clamp(16px,4vw,24px);width:clamp(48px,12vw,58px);height:clamp(48px,12vw,58px);border-radius:50%;background:${color};color:white;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.2);z-index:100;transition:transform 0.2s;">
       <i data-lucide="save" style="width:46%;height:46%;"></i>
     </button>
   `;
   lucide.createIcons();
 }
-
-function savePublicContact(cardJson) {
+ 
+/* ✅ PATCH 3: usa viewingPublicCard em vez de JSON + feedback visual no botão */
+function savePublicContact() {
+  const card = viewingPublicCard;
+  if (!card) return;
+  const btn = document.getElementById('public-save-btn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
   try {
-    const card = JSON.parse(cardJson);
     const parts = card.nome.split(' ');
     const last = parts.length > 1 ? parts.pop() : '';
     const first = parts.join(' ');
@@ -307,22 +311,38 @@ function savePublicContact(cardJson) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = (card.nome.replace(/\s+/g, '_') || 'contact') + '.vcf';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(a.href);
+    // Feedback visual: botão fica verde com ✓ por 2 segundos
+    if (btn) {
+      btn.style.background = '#059669';
+      btn.style.opacity = '1';
+      btn.innerHTML = '<i data-lucide="check" style="width:46%;height:46%;"></i>';
+      lucide.createIcons();
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.style.background = card.cor_principal || '#1a3a6b';
+        btn.innerHTML = '<i data-lucide="save" style="width:46%;height:46%;"></i>';
+        lucide.createIcons();
+      }, 2000);
+    }
     const msg = document.createElement('div');
-    msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#10b981;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;';
+    msg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#10b981;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;';
     msg.textContent = 'Contacto guardado com sucesso!';
     document.body.appendChild(msg);
     setTimeout(() => msg.remove(), 3000);
   } catch (err) {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
     const msg = document.createElement('div');
-    msg.style.cssText = 'position:fixed;top:20px;right:20px;background:#ef4444;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;';
+    msg.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#ef4444;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:9999;';
     msg.textContent = 'Erro ao guardar contacto';
     document.body.appendChild(msg);
     setTimeout(() => msg.remove(), 3000);
   }
 }
-
+ 
 function getSocialLinksHTML(card, color) {
   const socials = [
     { key: 'instagram', icon: 'instagram', color: '#E4405F', prefix: 'https://instagram.com/' },
@@ -344,7 +364,7 @@ function getSocialLinksHTML(card, color) {
   html += '</div>';
   return html;
 }
-
+ 
 function lightenColor(hex, pct) {
   let r = parseInt(hex.slice(1,3),16);
   let g = parseInt(hex.slice(3,5),16);
@@ -354,19 +374,19 @@ function lightenColor(hex, pct) {
   b = Math.min(255, b + Math.round((255-b)*pct/100));
   return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
 }
-
+ 
 function formatWebsiteUrl(url) {
   if (!url) return '#';
   if (!url.match(/^https?:\/\//)) return 'https://' + url;
   return url;
 }
-
+ 
 function escHtml(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
 }
-
+ 
 async function doLogin(e) {
   e.preventDefault();
   const email = document.getElementById('login-email').value.trim();
@@ -401,7 +421,7 @@ async function doLogin(e) {
     btn.disabled = false; btn.innerHTML = 'Entrar';
   }
 }
-
+ 
 async function doLogout() {
   await sb.auth.signOut();
   currentUser = null; allCards = []; clearForm();
@@ -412,7 +432,7 @@ async function doLogout() {
   document.getElementById('login-error').classList.add('hidden');
   showToast('Desconectado com sucesso!'); lucide.createIcons();
 }
-
+ 
 function navTo(sec) {
   document.querySelectorAll('section[id^="sec-"]').forEach(s => s.style.display = 'none');
   const targetSection = document.getElementById('sec-' + sec);
@@ -430,7 +450,7 @@ function navTo(sec) {
   const editSections = ['perfil','contactos','design','export'];
   document.getElementById('save-btn').style.display = editSections.includes(sec) ? 'flex' : 'none';
 }
-
+ 
 function updatePreview() {
   const nome    = document.getElementById('f-name').value    || 'João Silva';
   const cargo   = document.getElementById('f-role').value    || 'Designer Gráfico';
@@ -463,7 +483,7 @@ function updatePreview() {
   updateSocialsPreview();
   document.querySelectorAll('#preview-card [data-lucide]').forEach(ic => ic.style.color = currentColor);
 }
-
+ 
 function updateSocialsPreview() {
   const socialsDiv = document.getElementById('preview-socials');
   socialsDiv.innerHTML = '';
@@ -488,14 +508,14 @@ function updateSocialsPreview() {
   });
   lucide.createIcons();
 }
-
+ 
 function setPreviewRow(rowId, spanId, val) {
   const row  = document.getElementById(rowId);
   const span = document.getElementById(spanId);
   if (val && val.trim()) { row.classList.remove('hidden'); span.textContent = val; }
   else row.classList.add('hidden');
 }
-
+ 
 function pickColor(c) {
   currentColor = c;
   document.getElementById('custom-color').value     = c;
@@ -503,13 +523,13 @@ function pickColor(c) {
   document.querySelectorAll('.color-swatch').forEach(s => s.style.borderColor = s.dataset.color === c ? c : 'transparent');
   updatePreview();
 }
-
+ 
 function pickTemplate(t) {
   currentTemplate = t;
   document.querySelectorAll('.template-card').forEach(tc => tc.style.borderColor = tc.dataset.tpl === t ? currentColor : '#e5e7eb');
   updatePreview();
 }
-
+ 
 async function saveCard() {
   if (!currentUser) { showToast('Faça login primeiro!'); return; }
   const nome = document.getElementById('f-name').value.trim();
@@ -571,15 +591,27 @@ async function saveCard() {
     showToast(editingCard ? 'Cartão atualizado!' : 'Cartão guardado!');
     if (!editingCard) clearForm();
     await loadUserCards();
+    /* ✅ PATCH 1: feedback visual de sucesso — botão fica verde com ✓ por 2s */
+    btn.style.background = '#059669';
+    btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Guardado!';
+    lucide.createIcons();
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.style.background = '#4338ca';
+      btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Guardar';
+      lucide.createIcons();
+    }, 2000);
+    return;
   } catch (err) {
     showToast('Erro ao guardar: ' + (err.message||'tente novamente'));
   } finally {
     btn.disabled = false;
+    btn.style.background = '#4338ca';
     btn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Guardar';
     lucide.createIcons();
   }
 }
-
+ 
 function clearForm() {
   ['f-name','f-role','f-company','f-website','f-address','f-about','f-instagram','f-facebook','f-linkedin','f-whatsapp','f-youtube','f-tiktok','f-twitter','f-cover','f-avatar','f-phone','f-email'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
@@ -591,7 +623,7 @@ function clearForm() {
   editingCard = null; currentColor = '#4338ca'; currentTemplate = 'classic';
   pickColor(currentColor); pickTemplate(currentTemplate); updatePreview();
 }
-
+ 
 async function loadUserCards() {
   if (!currentUser) return;
   try {
@@ -605,7 +637,7 @@ async function loadUserCards() {
     if (document.getElementById('sec-dashboard').style.display !== 'none') renderDashboard();
   } catch (err) { allCards = []; }
 }
-
+ 
 function renderDashboard() {
   const grid  = document.getElementById('cards-grid');
   const empty = document.getElementById('empty-state');
@@ -614,7 +646,7 @@ function renderDashboard() {
   allCards.forEach(card => grid.appendChild(createCardElement(card)));
   lucide.createIcons();
 }
-
+ 
 function createCardElement(card) {
   const div = document.createElement('div');
   div.className = 'card-preview bg-white rounded-xl border border-gray-200 overflow-hidden';
@@ -634,7 +666,7 @@ function createCardElement(card) {
     </div>`;
   return div;
 }
-
+ 
 function editCard(id) {
   const card = allCards.find(c => c.id === id); if (!card) return;
   editingCard = card;
@@ -673,7 +705,7 @@ function editCard(id) {
   pickColor(currentColor); pickTemplate(currentTemplate); updatePreview();
   navTo('perfil'); showToast('A editar cartão de '+(card.nome||'sem nome')); lucide.createIcons();
 }
-
+ 
 async function duplicateCard(id) {
   const card = allCards.find(c => c.id === id); if (!card) return;
   const btn = event.target.closest('button');
@@ -687,7 +719,7 @@ async function duplicateCard(id) {
   } catch (err) { showToast('Erro ao duplicar: '+(err.message||'tente novamente')); }
   finally { btn.disabled = false; btn.innerHTML = '<i data-lucide="copy" class="w-3 h-3"></i> Duplicar'; lucide.createIcons(); }
 }
-
+ 
 function requestDelete(id) {
   deleteTarget = allCards.find(c => c.id === id); if (!deleteTarget) return;
   document.getElementById('delete-modal').classList.remove('hidden');
@@ -704,9 +736,9 @@ function requestDelete(id) {
     closeDeleteModal();
   };
 }
-
+ 
 function closeDeleteModal() { document.getElementById('delete-modal').classList.add('hidden'); deleteTarget = null; }
-
+ 
 function populateShareSelect() {
   const select = document.getElementById('share-select');
   select.innerHTML = '<option value="">-- Escolha um cartão --</option>';
@@ -718,7 +750,7 @@ function populateShareSelect() {
     else document.getElementById('share-container').classList.add('hidden');
   };
 }
-
+ 
 function generateShareLink(card) {
   const baseUrl   = window.location.origin + window.location.pathname;
   const publicUrl = baseUrl + '?view=' + card.id;
@@ -727,15 +759,15 @@ function generateShareLink(card) {
   const qrContainer = document.getElementById('share-qr'); qrContainer.innerHTML = '';
   if (typeof QRCode !== 'undefined') { new QRCode(qrContainer, { text: publicUrl, width: 200, height: 200, colorDark: currentColor, colorLight: '#ffffff' }); }
 }
-
+ 
 function copyLink() { navigator.clipboard.writeText(document.getElementById('share-link').value).then(() => showToast('Link copiado!')); }
-
+ 
 function checkExportReady() {
   const msg = document.getElementById('export-select-msg');
   if (!document.getElementById('f-name').value.trim()) msg.classList.remove('hidden');
   else msg.classList.add('hidden');
 }
-
+ 
 function getExportCard() {
   return {
     nome: document.getElementById('f-name').value||'', cargo: document.getElementById('f-role').value||'',
@@ -748,10 +780,10 @@ function getExportCard() {
     twitter: document.getElementById('f-twitter').value||''
   };
 }
-
+ 
 function getFirstPhone() { return document.getElementById('f-phone')?.value.trim()||''; }
 function getFirstEmail() { return document.getElementById('f-email')?.value.trim()||''; }
-
+ 
 function downloadVCF() {
   const c = getExportCard(); if (!c.nome) { showToast('Preencha pelo menos o nome.'); return; }
   const parts = c.nome.split(' '); const last = parts.length>1?parts.pop():''; const first = parts.join(' ');
@@ -767,7 +799,7 @@ function downloadVCF() {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (c.nome.replace(/\s+/g,'_')||'contact')+'.vcf'; a.click(); URL.revokeObjectURL(a.href);
   showToast('VCF descarregado!');
 }
-
+ 
 function downloadQR() {
   const c = getExportCard(); if (!c.nome) { showToast('Preencha pelo menos o nome.'); return; }
   const container = document.getElementById('qr-container'); const qrDiv = document.getElementById('qr-canvas');
@@ -778,12 +810,12 @@ function downloadQR() {
     else showToast('Erro ao gerar QR Code - tente novamente');
   }, 100);
 }
-
+ 
 function showToast(msg) {
   const t = document.getElementById('toast'); document.getElementById('toast-text').textContent = msg;
   t.classList.remove('hidden'); lucide.createIcons(); setTimeout(() => t.classList.add('hidden'), 3000);
 }
-
+ 
 async function loadAdminPanel() {
   if (!currentUser || !ADMIN_EMAILS.includes(currentUser.email)) { showToast('Sem permissões de administrador'); return; }
   try {
@@ -836,7 +868,7 @@ async function loadAdminPanel() {
     lucide.createIcons();
   } catch (err) { showToast('Erro ao carregar dados do painel'); }
 }
-
+ 
 async function adminDeleteCard(card) {
   const userConfirm = document.createElement('div');
   userConfirm.className='fixed inset-0 z-50 flex items-center justify-center'; userConfirm.style.background='rgba(0,0,0,0.4)';
@@ -851,7 +883,7 @@ async function adminDeleteCard(card) {
     } catch (err) { showToast('Erro ao eliminar cartão'); btn.disabled=false; btn.textContent='Eliminar'; }
   };
 }
-
+ 
 async function adminExportMass() {
   const btn = document.getElementById('admin-export-mass-btn');
   btn.disabled=true; btn.innerHTML='<i data-lucide="loader" class="w-4 h-4 animate-spin inline"></i> A exportar...'; lucide.createIcons();
@@ -868,7 +900,7 @@ async function adminExportMass() {
   } catch (err) { showToast('Erro ao exportar cartões'); }
   finally { btn.disabled=false; btn.innerHTML='<i data-lucide="download" class="w-4 h-4 inline"></i> Exportar Todos (CSV)'; lucide.createIcons(); }
 }
-
+ 
 async function restoreSession() {
   try {
     const { data: { session } } = await sb.auth.getSession();
@@ -884,7 +916,7 @@ async function restoreSession() {
   } catch (err) {}
   return false;
 }
-
+ 
 document.addEventListener('DOMContentLoaded', async function() {
   await initSupabase();
   const params = new URLSearchParams(window.location.search);
@@ -1186,7 +1218,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 ['f-name','f-role','f-company','f-website','f-address','f-about','f-instagram','f-facebook','f-linkedin','f-whatsapp','f-youtube','f-tiktok','f-twitter','f-phone','f-email'].forEach(id => {
   const el = document.getElementById(id); if (el) el.addEventListener('input', updatePreview);
 });
-
+ 
 document.getElementById('f-cover').addEventListener('change', function(e) {
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
@@ -1199,7 +1231,7 @@ document.getElementById('f-cover').addEventListener('change', function(e) {
   };
   reader.readAsDataURL(file);
 });
-
+ 
 document.getElementById('f-avatar').addEventListener('change', function(e) {
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
@@ -1212,10 +1244,10 @@ document.getElementById('f-avatar').addEventListener('change', function(e) {
   };
   reader.readAsDataURL(file);
 });
-
+ 
 function getFirstPhone() { return document.getElementById('f-phone').value||''; }
 function getFirstEmail() { return document.getElementById('f-email').value||''; }
-
+ 
 function adminDownloadCard(card) {
   let vcf = `BEGIN:VCARD\nVERSION:3.0\nFN:${card.nome}\nTITLE:${card.cargo||''}\nORG:${card.empresa||''}\n`;
   if (card.telemovel)        vcf += `TEL;TYPE=CELL:${card.telemovel}\n`;
