@@ -29,7 +29,7 @@
     @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
     .fade-in { animation: fadeIn 0.4s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-thumb { background: #c4c4c4; border-radius: 3px; }
   </style>
@@ -379,70 +379,90 @@ function showFloatingMsg(text, bg) {
   setTimeout(() => msg.remove(), 3000);
 }
 
-function buildBusinessCardHTML(card, publicUrl) {
-  const color = card.cor_principal || '#00aacc';
-  const avatarSrc = card.avatar_url || '';
+// Gera QR code como imagem base64 (data URL) para embed direto no HTML
+async function generateQRDataURL(text, size) {
+  return new Promise((resolve) => {
+    if (typeof QRCode === 'undefined') { resolve(''); return; }
+    const tempCanvas = document.createElement('canvas');
+    QRCode.toCanvas(tempCanvas, text, { width: size || 180, margin: 1, color: { dark: '#000000', light: '#ffffff' } }, (err) => {
+      if (err) { resolve(''); return; }
+      resolve(tempCanvas.toDataURL('image/png'));
+    });
+  });
+}
+
+// Constrói o HTML do cartão de visita com o QR já embutido como <img>
+function buildBusinessCardHTML(card, qrDataUrl) {
+  const color = card.cor_principal || '#0038a8';
   const logoSrc = card.cover_url || '';
-  const name = card.nome || '';
-  const role = card.cargo || '';
+  const name = (card.nome || '').toUpperCase();
+  const role = (card.cargo || '').toUpperCase();
+  const empresa = card.empresa || '';
   const phone1 = card.telemovel || '';
   const phone2 = card.telefone_empresa || '';
   const email1 = card.email || '';
   const email2 = card.email_empresa || card.fax || '';
   const website = card.website || '';
 
+  // Logo do lado direito: se tiver imagem usa ela, senão usa nome da empresa em texto estilizado
+  const logoHtml = logoSrc
+    ? `<img src="${logoSrc}" crossorigin="anonymous" style="max-height:52px;max-width:120px;object-fit:contain;filter:brightness(0) invert(1);opacity:0.95;">`
+    : empresa
+      ? `<div style="color:white;font-size:20px;font-weight:900;letter-spacing:1px;text-transform:uppercase;opacity:0.95;">${empresa}</div>`
+      : '';
+
+  const iconPhone = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`;
+  const iconEmail = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`;
+  const iconWeb  = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
+
   return `
-  <div style="width:900px;height:500px;display:flex;font-family:'Segoe UI',Arial,sans-serif;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.2);">
-    <!-- LEFT PANEL: white, contact info -->
-    <div style="width:400px;flex-shrink:0;background:white;display:flex;flex-direction:column;justify-content:center;padding:40px 50px;gap:0;">
+  <div style="width:900px;height:500px;display:flex;font-family:'Segoe UI',Arial,sans-serif;border-radius:18px;overflow:hidden;">
+
+    <!-- PAINEL ESQUERDO: branco, informações de contacto -->
+    <div style="width:420px;flex-shrink:0;background:#ffffff;display:flex;flex-direction:column;justify-content:center;padding:44px 52px;gap:0;">
       ${phone1 || phone2 ? `
-      <div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;">
-        <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-        </div>
+      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:24px;">
+        <div style="flex-shrink:0;margin-top:2px;">${iconPhone}</div>
         <div>
-          ${phone1 ? `<div style="font-size:17px;font-weight:600;color:${color};line-height:1.5;">${phone1}</div>` : ''}
-          ${phone2 ? `<div style="font-size:17px;font-weight:600;color:${color};line-height:1.5;">${phone2}</div>` : ''}
+          ${phone1 ? `<div style="font-size:16px;font-weight:700;color:${color};line-height:1.55;">${phone1}</div>` : ''}
+          ${phone2 ? `<div style="font-size:16px;font-weight:700;color:${color};line-height:1.55;">${phone2}</div>` : ''}
         </div>
       </div>` : ''}
       ${email1 || email2 ? `
-      <div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;">
-        <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-        </div>
+      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:24px;">
+        <div style="flex-shrink:0;margin-top:2px;">${iconEmail}</div>
         <div>
-          ${email1 ? `<div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${email1}</div>` : ''}
-          ${email2 ? `<div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${email2}</div>` : ''}
+          ${email1 ? `<div style="font-size:14px;font-weight:500;color:${color};line-height:1.6;">${email1}</div>` : ''}
+          ${email2 ? `<div style="font-size:14px;font-weight:500;color:${color};line-height:1.6;">${email2}</div>` : ''}
         </div>
       </div>` : ''}
       ${website ? `
-      <div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;">
-        <div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        </div>
-        <div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${website}</div>
+      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:24px;">
+        <div style="flex-shrink:0;margin-top:2px;">${iconWeb}</div>
+        <div style="font-size:14px;font-weight:500;color:${color};line-height:1.6;">${website}</div>
       </div>` : ''}
     </div>
-    <!-- RIGHT PANEL: colored, QR + name -->
-    <div style="flex:1;background:${color};position:relative;display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;padding:32px 36px;overflow:hidden;">
-      <!-- Diagonal white stripes decoration -->
-      <div style="position:absolute;top:-60px;left:-80px;width:200px;height:200px;background:rgba(255,255,255,0.12);border-radius:50%;"></div>
-      <div style="position:absolute;top:40px;right:-40px;width:120px;height:400px;background:rgba(255,255,255,0.08);transform:rotate(-20deg);border-radius:40px;"></div>
-      <div style="position:absolute;bottom:-60px;left:20px;width:180px;height:180px;background:rgba(255,255,255,0.1);border-radius:50%;"></div>
-      <!-- QR Code and name area -->
-      <div style="position:relative;z-index:2;width:100%;display:flex;flex-direction:column;align-items:center;gap:12px;">
-        <!-- QR Code box -->
-        <div style="background:white;border-radius:12px;padding:12px;display:inline-flex;align-items:center;justify-content:center;">
-          <canvas id="bc-qr-canvas"></canvas>
-        </div>
-        <!-- Name -->
-        <div style="text-align:center;color:white;">
-          <div style="font-size:20px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">${name}</div>
-          <div style="font-size:13px;font-weight:400;letter-spacing:1px;margin-top:4px;opacity:0.9;text-transform:uppercase;">${role}</div>
-        </div>
+
+    <!-- PAINEL DIREITO: colorido, QR + nome + logo/empresa -->
+    <div style="flex:1;background:${color};position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 40px;overflow:hidden;gap:14px;">
+      <!-- Decorações circulares -->
+      <div style="position:absolute;top:-70px;left:-70px;width:220px;height:220px;background:rgba(255,255,255,0.10);border-radius:50%;"></div>
+      <div style="position:absolute;bottom:-70px;right:-50px;width:200px;height:200px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
+      <div style="position:absolute;top:30px;right:-50px;width:140px;height:450px;background:rgba(255,255,255,0.06);transform:rotate(-18deg);border-radius:50px;"></div>
+
+      <!-- QR Code como imagem já renderizada -->
+      <div style="background:white;border-radius:14px;padding:14px;display:inline-flex;align-items:center;justify-content:center;position:relative;z-index:2;box-shadow:0 4px 20px rgba(0,0,0,0.15);">
+        ${qrDataUrl ? `<img src="${qrDataUrl}" width="160" height="160" style="display:block;">` : '<div style="width:160px;height:160px;background:#eee;"></div>'}
       </div>
-      <!-- Logo bottom right -->
-      ${logoSrc ? `<div style="position:relative;z-index:2;margin-top:auto;"><img src="${logoSrc}" style="max-height:50px;max-width:100px;object-fit:contain;filter:brightness(0) invert(1);opacity:0.9;"></div>` : `<div style="position:relative;z-index:2;margin-top:auto;color:white;font-size:28px;font-weight:900;letter-spacing:-1px;opacity:0.9;">i<span style="color:rgba(255,255,255,0.7);">3</span>S</div>`}
+
+      <!-- Nome e Cargo -->
+      <div style="text-align:center;color:white;position:relative;z-index:2;">
+        <div style="font-size:18px;font-weight:900;letter-spacing:2px;line-height:1.3;">${name}</div>
+        ${role ? `<div style="font-size:12px;font-weight:400;letter-spacing:1.5px;margin-top:5px;opacity:0.85;">${role}</div>` : ''}
+      </div>
+
+      <!-- Logo / Nome da empresa (dinâmico) -->
+      ${logoHtml ? `<div style="position:absolute;bottom:24px;right:28px;z-index:2;">${logoHtml}</div>` : ''}
     </div>
   </div>`;
 }
@@ -452,19 +472,17 @@ async function renderBusinessCardWithQR() {
   if (!card) return null;
   const publicUrl = window.location.href;
 
+  // Gera QR como base64 ANTES de construir o HTML
+  const qrDataUrl = await generateQRDataURL(publicUrl, 180);
+
   const container = document.getElementById('business-card-render');
   if (!container) return null;
 
   container.style.display = 'block';
-  container.innerHTML = buildBusinessCardHTML(card, publicUrl);
+  container.innerHTML = buildBusinessCardHTML(card, qrDataUrl);
 
-  // Generate QR code into the canvas element
-  await new Promise((resolve) => {
-    const canvas = container.querySelector('#bc-qr-canvas');
-    if (canvas && typeof QRCode !== 'undefined') {
-      QRCode.toCanvas(canvas, publicUrl, { width: 160, margin: 1, color: { dark: '#000000', light: '#ffffff' } }, () => resolve());
-    } else { resolve(); }
-  });
+  // Aguarda imagens carregarem (logo externo)
+  await new Promise(resolve => setTimeout(resolve, 300));
 
   return container;
 }
@@ -1012,35 +1030,27 @@ function downloadQR() {
 async function downloadCardPNG() {
   const c = getExportCard(); if (!c.nome) { showToast('Preencha pelo menos o nome.'); return; }
   showToast('A gerar imagem PNG...');
-  // Build a temporary card object
   const tempCard = {
-    ...c,
-    cor_principal: currentColor,
-    avatar_url: avatarImageData instanceof File ? null : (editingCard?.avatar_url || null),
+    ...c, cor_principal: currentColor,
     cover_url: coverImageData instanceof File ? null : (editingCard?.cover_url || null)
   };
   const publicUrl = editingCard?.id
     ? window.location.origin + window.location.pathname + '?view=' + editingCard.id
     : window.location.href;
-
+  const qrDataUrl = await generateQRDataURL(publicUrl, 180);
   const container = document.getElementById('editor-card-render');
   if (!container) return;
   container.style.display = 'block';
-  container.innerHTML = buildEditorCardHTML(tempCard, publicUrl);
-  await new Promise(resolve => {
-    const canvas = container.querySelector('#ed-qr-canvas');
-    if (canvas && typeof QRCode !== 'undefined') {
-      QRCode.toCanvas(canvas, publicUrl, { width: 160, margin: 1 }, () => resolve());
-    } else resolve();
-  });
+  container.innerHTML = buildEditorCardHTML(tempCard, qrDataUrl);
+  await new Promise(r => setTimeout(r, 200));
   try {
-    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff', allowTaint: true });
     const link = document.createElement('a');
     link.download = (c.nome.replace(/\s+/g,'_') || 'cartao') + '_cartao.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
     showToast('PNG guardado!');
-  } catch(e) { showToast('Erro ao gerar PNG'); }
+  } catch(e) { showToast('Erro ao gerar PNG: ' + e.message); }
   container.style.display = 'none';
 }
 
@@ -1048,63 +1058,72 @@ async function downloadCardPDF() {
   const c = getExportCard(); if (!c.nome) { showToast('Preencha pelo menos o nome.'); return; }
   showToast('A gerar PDF...');
   const tempCard = {
-    ...c,
-    cor_principal: currentColor,
-    avatar_url: avatarImageData instanceof File ? null : (editingCard?.avatar_url || null),
+    ...c, cor_principal: currentColor,
     cover_url: coverImageData instanceof File ? null : (editingCard?.cover_url || null)
   };
   const publicUrl = editingCard?.id
     ? window.location.origin + window.location.pathname + '?view=' + editingCard.id
     : window.location.href;
-
+  const qrDataUrl = await generateQRDataURL(publicUrl, 180);
   const container = document.getElementById('editor-card-render');
   if (!container) return;
   container.style.display = 'block';
-  container.innerHTML = buildEditorCardHTML(tempCard, publicUrl);
-  await new Promise(resolve => {
-    const canvas = container.querySelector('#ed-qr-canvas');
-    if (canvas && typeof QRCode !== 'undefined') {
-      QRCode.toCanvas(canvas, publicUrl, { width: 160, margin: 1 }, () => resolve());
-    } else resolve();
-  });
+  container.innerHTML = buildEditorCardHTML(tempCard, qrDataUrl);
+  await new Promise(r => setTimeout(r, 200));
   try {
-    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff', allowTaint: true });
     const imgData = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [504, 288] });
     pdf.addImage(imgData, 'PNG', 0, 0, 504, 288, undefined, 'FAST');
     pdf.save((c.nome.replace(/\s+/g,'_') || 'cartao') + '_cartao.pdf');
     showToast('PDF guardado!');
-  } catch(e) { showToast('Erro ao gerar PDF'); }
+  } catch(e) { showToast('Erro ao gerar PDF: ' + e.message); }
   container.style.display = 'none';
 }
 
-function buildEditorCardHTML(card, publicUrl) {
-  const color = card.cor_principal || '#00aacc';
-  const name = card.nome || '';
-  const role = card.cargo || '';
+// HTML do cartão para o painel de exportação (editor) — QR já embutido como <img>
+function buildEditorCardHTML(card, qrDataUrl) {
+  const color = card.cor_principal || '#0038a8';
+  const logoSrc = card.cover_url || '';
+  const name = (card.nome || '').toUpperCase();
+  const role = (card.cargo || '').toUpperCase();
+  const empresa = card.empresa || '';
   const phone1 = card.telemovel || '';
   const phone2 = card.telefone_empresa || '';
   const email1 = card.email || '';
   const email2 = card.email_empresa || card.fax || '';
   const website = card.website || '';
-  const logoSrc = card.cover_url || '';
+
+  const logoHtml = logoSrc
+    ? `<img src="${logoSrc}" crossorigin="anonymous" style="max-height:52px;max-width:120px;object-fit:contain;filter:brightness(0) invert(1);opacity:0.95;">`
+    : empresa
+      ? `<div style="color:white;font-size:20px;font-weight:900;letter-spacing:1px;text-transform:uppercase;opacity:0.95;">${empresa}</div>`
+      : '';
+
+  const iconPhone = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.2"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>`;
+  const iconEmail = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`;
+  const iconWeb  = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
+
   return `
-  <div style="width:900px;height:500px;display:flex;font-family:'Segoe UI',Arial,sans-serif;border-radius:16px;overflow:hidden;">
-    <div style="width:400px;flex-shrink:0;background:white;display:flex;flex-direction:column;justify-content:center;padding:40px 50px;gap:0;">
-      ${phone1||phone2?`<div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;"><div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div><div>${phone1?`<div style="font-size:17px;font-weight:600;color:${color};line-height:1.5;">${phone1}</div>`:''} ${phone2?`<div style="font-size:17px;font-weight:600;color:${color};line-height:1.5;">${phone2}</div>`:''}</div></div>`:''}
-      ${email1||email2?`<div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;"><div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><div>${email1?`<div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${email1}</div>`:''} ${email2?`<div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${email2}</div>`:''}</div></div>`:''}
-      ${website?`<div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:22px;"><div style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div><div style="font-size:15px;color:${color};font-weight:500;line-height:1.6;">${website}</div></div>`:''}
+  <div style="width:900px;height:500px;display:flex;font-family:'Segoe UI',Arial,sans-serif;border-radius:18px;overflow:hidden;">
+    <div style="width:420px;flex-shrink:0;background:#ffffff;display:flex;flex-direction:column;justify-content:center;padding:44px 52px;gap:0;">
+      ${phone1||phone2?`<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:24px;"><div style="flex-shrink:0;margin-top:2px;">${iconPhone}</div><div>${phone1?`<div style="font-size:16px;font-weight:700;color:${color};line-height:1.55;">${phone1}</div>`:''}${phone2?`<div style="font-size:16px;font-weight:700;color:${color};line-height:1.55;">${phone2}</div>`:''}</div></div>`:''}
+      ${email1||email2?`<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:24px;"><div style="flex-shrink:0;margin-top:2px;">${iconEmail}</div><div>${email1?`<div style="font-size:14px;font-weight:500;color:${color};line-height:1.6;">${email1}</div>`:''}${email2?`<div style="font-size:14px;font-weight:500;color:${color};line-height:1.6;">${email2}</div>`:''}</div></div>`:''}
+      ${website?`<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:24px;"><div style="flex-shrink:0;margin-top:2px;">${iconWeb}</div><div style="font-size:14px;font-weight:500;color:${color};line-height:1.6;">${website}</div></div>`:''}
     </div>
-    <div style="flex:1;background:${color};position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 36px;overflow:hidden;gap:16px;">
-      <div style="position:absolute;top:-60px;left:-80px;width:200px;height:200px;background:rgba(255,255,255,0.12);border-radius:50%;"></div>
-      <div style="position:absolute;top:40px;right:-40px;width:120px;height:400px;background:rgba(255,255,255,0.08);transform:rotate(-20deg);border-radius:40px;"></div>
-      <div style="background:white;border-radius:12px;padding:12px;display:inline-flex;align-items:center;justify-content:center;position:relative;z-index:2;"><canvas id="ed-qr-canvas"></canvas></div>
-      <div style="text-align:center;color:white;position:relative;z-index:2;">
-        <div style="font-size:20px;font-weight:800;letter-spacing:2px;text-transform:uppercase;">${name}</div>
-        <div style="font-size:13px;font-weight:400;letter-spacing:1px;margin-top:4px;opacity:0.9;text-transform:uppercase;">${role}</div>
+    <div style="flex:1;background:${color};position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 40px;overflow:hidden;gap:14px;">
+      <div style="position:absolute;top:-70px;left:-70px;width:220px;height:220px;background:rgba(255,255,255,0.10);border-radius:50%;"></div>
+      <div style="position:absolute;bottom:-70px;right:-50px;width:200px;height:200px;background:rgba(255,255,255,0.08);border-radius:50%;"></div>
+      <div style="position:absolute;top:30px;right:-50px;width:140px;height:450px;background:rgba(255,255,255,0.06);transform:rotate(-18deg);border-radius:50px;"></div>
+      <div style="background:white;border-radius:14px;padding:14px;display:inline-flex;align-items:center;justify-content:center;position:relative;z-index:2;box-shadow:0 4px 20px rgba(0,0,0,0.15);">
+        ${qrDataUrl ? `<img src="${qrDataUrl}" width="160" height="160" style="display:block;">` : '<div style="width:160px;height:160px;background:#eee;border-radius:8px;"></div>'}
       </div>
-      ${logoSrc?`<img src="${logoSrc}" style="max-height:40px;max-width:80px;object-fit:contain;filter:brightness(0) invert(1);opacity:0.9;position:relative;z-index:2;">`:``}
+      <div style="text-align:center;color:white;position:relative;z-index:2;">
+        <div style="font-size:18px;font-weight:900;letter-spacing:2px;line-height:1.3;">${name}</div>
+        ${role?`<div style="font-size:12px;font-weight:400;letter-spacing:1.5px;margin-top:5px;opacity:0.85;">${role}</div>`:''}
+      </div>
+      ${logoHtml?`<div style="position:absolute;bottom:24px;right:28px;z-index:2;">${logoHtml}</div>`:''}
     </div>
   </div>`;
 }
@@ -1497,6 +1516,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     </div>
    </div>
   </div>
+  <!-- Hidden render container for PNG/PDF export -->
+  <div id="editor-card-render" style="position:fixed;left:-9999px;top:0;width:900px;height:500px;display:none;"></div>
   <!-- DELETE MODAL -->
   <div id="delete-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center" style="background:rgba(0,0,0,0.4);">
    <div class="bg-white rounded-xl p-6 max-w-sm mx-4 shadow-xl">
