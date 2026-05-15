@@ -324,27 +324,13 @@ function toggleFabMenu() {
 function savePublicContact() {
   const card = viewingPublicCard;
   if (!card) return;
-  // close menu
   const menu = document.getElementById('public-fab-menu');
   if (menu) menu.style.display = 'none';
   const btn = document.getElementById('public-save-btn');
   if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
   try {
-    const parts = card.nome.split(' ');
-    const last = parts.length > 1 ? parts.pop() : '';
-    const first = parts.join(' ');
-    let vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first};;;\nFN:${card.nome}\n`;
-    if (card.cargo)   vcf += `TITLE:${card.cargo}\n`;
-    if (card.empresa) vcf += `ORG:${card.empresa}\n`;
-    if (card.telemovel) vcf += `TEL;TYPE=CELL:${card.telemovel}\n`;
-    if (card.telefone_empresa) vcf += `TEL;TYPE=WORK:${card.telefone_empresa}\n`;
-    if (card.email)   vcf += `EMAIL:${card.email}\n`;
-    if (card.email_empresa) vcf += `EMAIL;TYPE=WORK:${card.email_empresa}\n`;
-    if (card.website) vcf += `URL:${card.website}\n`;
-    if (card.address) vcf += `ADR;TYPE=WORK:;;${card.address};;;;\n`;
-    if (card.about)   vcf += `NOTE:${card.about}\n`;
-    vcf += `END:VCARD`;
-    const blob = new Blob([vcf], { type: 'text/vcard' });
+    const vcf = buildVCardString(card);
+    const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = (card.nome.replace(/\s+/g, '_') || 'contact') + '.vcf';
@@ -507,10 +493,10 @@ function buildBusinessCardHTML(card, qrDataUrl) {
 async function renderBusinessCardWithQR() {
   const card = viewingPublicCard;
   if (!card) return null;
-  const publicUrl = window.location.href;
 
-  // Gera QR como base64 ANTES de construir o HTML
-  const qrDataUrl = await generateQRDataURL(publicUrl, 180);
+  // QR contém o vCard completo — ao escanear abre directamente "Novo Contacto" no telemóvel
+  const vcfContent = buildVCardString(card);
+  const qrDataUrl = await generateQRDataURL(vcfContent, 200);
 
   const container = document.getElementById('business-card-render');
   if (!container) return null;
@@ -522,6 +508,34 @@ async function renderBusinessCardWithQR() {
   await new Promise(resolve => setTimeout(resolve, 500));
 
   return container;
+}
+
+// Constrói o vCard 3.0 completo com todos os campos — padrão reconhecido por iOS e Android
+function buildVCardString(card) {
+  const parts = (card.nome || '').split(' ');
+  const last  = parts.length > 1 ? parts.pop() : '';
+  const first = parts.join(' ');
+  let vcf = `BEGIN:VCARD\r\nVERSION:3.0\r\n`;
+  vcf += `N:${last};${first};;;\r\n`;
+  vcf += `FN:${card.nome || ''}\r\n`;
+  if (card.cargo)            vcf += `TITLE:${card.cargo}\r\n`;
+  if (card.empresa)          vcf += `ORG:${card.empresa}\r\n`;
+  if (card.departamento)     vcf += `ROLE:${card.departamento}\r\n`;
+  if (card.telemovel)        vcf += `TEL;TYPE=CELL:${card.telemovel}\r\n`;
+  if (card.telefone_empresa) vcf += `TEL;TYPE=WORK:${card.telefone_empresa}\r\n`;
+  if (card.email)            vcf += `EMAIL;TYPE=WORK:${card.email}\r\n`;
+  if (card.email_empresa)    vcf += `EMAIL;TYPE=INTERNET:${card.email_empresa}\r\n`;
+  if (card.fax)              vcf += `EMAIL;TYPE=INTERNET:${card.fax}\r\n`;
+  if (card.website)          vcf += `URL:${card.website.match(/^https?:\/\//) ? card.website : 'https://' + card.website}\r\n`;
+  if (card.address)          vcf += `ADR;TYPE=WORK:;;${card.address};;;;\r\n`;
+  if (card.about)            vcf += `NOTE:${card.about}\r\n`;
+  if (card.instagram)        vcf += `X-SOCIALPROFILE;TYPE=instagram:https://instagram.com/${card.instagram}\r\n`;
+  if (card.linkedin)         vcf += `X-SOCIALPROFILE;TYPE=linkedin:https://linkedin.com/in/${card.linkedin}\r\n`;
+  if (card.facebook)         vcf += `X-SOCIALPROFILE;TYPE=facebook:https://facebook.com/${card.facebook}\r\n`;
+  if (card.whatsapp)         vcf += `X-SOCIALPROFILE;TYPE=whatsapp:https://wa.me/${card.whatsapp}\r\n`;
+  if (card.avatar_url)       vcf += `PHOTO;VALUE=URI:${card.avatar_url}\r\n`;
+  vcf += `END:VCARD`;
+  return vcf;
 }
 
 async function downloadBusinessCardPNG() {
@@ -1032,16 +1046,16 @@ function getFirstEmail() { return document.getElementById('f-email')?.value.trim
  
 function downloadvcf() {
   const c = getExportCard(); if (!c.nome) { showToast('Preencha pelo menos o nome.'); return; }
-  const parts = c.nome.split(' '); const last = parts.length>1?parts.pop():''; const first = parts.join(' ');
-  let vcf = `BEGIN:VCARD\nVERSION:3.0\nN:${last};${first};;;\nFN:${c.nome}\n`;
-  if (c.cargo)   vcf += `TITLE:${c.cargo}\n`;
-  if (c.empresa) vcf += `ORG:${c.empresa}\n`;
-  if (c.telemovel) vcf += `TEL;TYPE=CELL:${c.telemovel}\n`;
-  if (c.email)   vcf += `EMAIL:${c.email}\n`;
-  if (c.website) vcf += `URL:${c.website}\n`;
-  if (c.address) vcf += `ADR;TYPE=WORK:;;${c.address};;;;\n`;
-  vcf += `END:VCARD`;
-  const blob = new Blob([vcf],{type:'text/vcard'});
+  const fullCard = {
+    ...c,
+    departamento: document.getElementById('f-department')?.value || '',
+    telefone_empresa: document.getElementById('f-phone-empresa')?.value || '',
+    email_empresa: document.getElementById('f-email-empresa')?.value || '',
+    fax: document.getElementById('f-fax')?.value || '',
+    avatar_url: avatarImageData instanceof File ? null : (editingCard?.avatar_url || null)
+  };
+  const vcf = buildVCardString(fullCard);
+  const blob = new Blob([vcf], {type:'text/vcard;charset=utf-8'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = (c.nome.replace(/\s+/g,'_')||'contact')+'.vcf'; a.click(); URL.revokeObjectURL(a.href);
   showToast('vcf descarregado!');
 }
@@ -1050,14 +1064,17 @@ function downloadQR() {
   const c = getExportCard(); if (!c.nome) { showToast('Preencha pelo menos o nome.'); return; }
   const container = document.getElementById('qr-container'); const qrDiv = document.getElementById('qr-canvas');
   qrDiv.innerHTML = ''; container.classList.remove('hidden');
-  // QR code links to the public card URL if editingCard exists, otherwise vCard data
-  let qrContent;
-  if (editingCard && editingCard.id) {
-    const baseUrl = window.location.origin + window.location.pathname;
-    qrContent = baseUrl + '?view=' + editingCard.id;
-  } else {
-    qrContent = `BEGIN:VCARD\nVERSION:3.0\nFN:${c.nome}\nTEL:${c.telemovel||''}\nEMAIL:${c.email||''}\nORG:${c.empresa||''}\nTITLE:${c.cargo||''}\nEND:VCARD`;
-  }
+  // QR contém o vCard completo — ao escanear abre "Novo Contacto" no telemóvel com todos os campos
+  const qrContent = buildVCardString({
+    nome: c.nome, cargo: c.cargo, empresa: c.empresa,
+    departamento: document.getElementById('f-department')?.value || '',
+    telemovel: c.telemovel, telefone_empresa: c.telefone_empresa,
+    email: c.email, email_empresa: c.email_empresa, fax: c.fax,
+    website: c.website, address: c.address, about: c.about,
+    instagram: c.instagram, linkedin: c.linkedin, facebook: c.facebook,
+    whatsapp: c.whatsapp, youtube: c.youtube, tiktok: c.tiktok, twitter: c.twitter,
+    avatar_url: editingCard?.avatar_url || null
+  });
   setTimeout(() => {
     if (typeof QRCode !== 'undefined') new QRCode(qrDiv,{text:qrContent,width:200,height:200,colorDark:currentColor,colorLight:'#ffffff'});
     else showToast('Erro ao gerar QR Code - tente novamente');
@@ -1069,12 +1086,13 @@ async function downloadCardPNG() {
   showToast('A gerar imagem PNG...');
   const tempCard = {
     ...c, cor_principal: currentColor,
-    cover_url: coverImageData instanceof File ? null : (editingCard?.cover_url || null)
+    departamento: document.getElementById('f-department')?.value || '',
+    cover_url: coverImageData instanceof File ? null : (editingCard?.cover_url || null),
+    avatar_url: avatarImageData instanceof File ? null : (editingCard?.avatar_url || null)
   };
-  const publicUrl = editingCard?.id
-    ? window.location.origin + window.location.pathname + '?view=' + editingCard.id
-    : window.location.href;
-  const qrDataUrl = await generateQRDataURL(publicUrl, 180);
+  // QR contém vCard completo
+  const vcfContent = buildVCardString(tempCard);
+  const qrDataUrl = await generateQRDataURL(vcfContent, 200);
   const container = document.getElementById('editor-card-render');
   if (!container) return;
   container.style.display = 'block';
@@ -1096,12 +1114,13 @@ async function downloadCardPDF() {
   showToast('A gerar PDF...');
   const tempCard = {
     ...c, cor_principal: currentColor,
-    cover_url: coverImageData instanceof File ? null : (editingCard?.cover_url || null)
+    departamento: document.getElementById('f-department')?.value || '',
+    cover_url: coverImageData instanceof File ? null : (editingCard?.cover_url || null),
+    avatar_url: avatarImageData instanceof File ? null : (editingCard?.avatar_url || null)
   };
-  const publicUrl = editingCard?.id
-    ? window.location.origin + window.location.pathname + '?view=' + editingCard.id
-    : window.location.href;
-  const qrDataUrl = await generateQRDataURL(publicUrl, 180);
+  // QR contém vCard completo
+  const vcfContent = buildVCardString(tempCard);
+  const qrDataUrl = await generateQRDataURL(vcfContent, 200);
   const container = document.getElementById('editor-card-render');
   if (!container) return;
   container.style.display = 'block';
