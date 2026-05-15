@@ -6,7 +6,7 @@
   <title>VCard Creator</title>
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -379,17 +379,54 @@ function showFloatingMsg(text, bg) {
   setTimeout(() => msg.remove(), 3000);
 }
 
-// Gera QR code como imagem base64 (data URL) para embed direto no HTML
+// Gera QR code como data URL PNG — compatível com qrcodejs (qrcode.min.js)
 async function generateQRDataURL(text, size) {
   return new Promise((resolve) => {
-    if (typeof QRCode === 'undefined') { resolve(''); return; }
-    const tempCanvas = document.createElement('canvas');
-    QRCode.toCanvas(tempCanvas, text, { width: size || 180, margin: 1, color: { dark: '#000000', light: '#ffffff' } }, (err) => {
-      if (err) { resolve(''); return; }
-      resolve(tempCanvas.toDataURL('image/png'));
-    });
+    const sz = size || 200;
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;left:-99999px;top:0;width:' + sz + 'px;height:' + sz + 'px;';
+    document.body.appendChild(div);
+    try {
+      // qrcodejs: new QRCode(element, options) — gera <canvas> + <img>
+      new QRCode(div, {
+        text: text,
+        width: sz,
+        height: sz,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      // Aguarda renderização (qrcodejs é síncrono mas a img pode demorar)
+      const tryExtract = (attempts) => {
+        const canvas = div.querySelector('canvas');
+        if (canvas) {
+          try {
+            const dataUrl = canvas.toDataURL('image/png');
+            document.body.removeChild(div);
+            resolve(dataUrl);
+          } catch(e) {
+            document.body.removeChild(div);
+            resolve('');
+          }
+          return;
+        }
+        if (attempts > 0) {
+          setTimeout(() => tryExtract(attempts - 1), 100);
+        } else {
+          document.body.removeChild(div);
+          resolve('');
+        }
+      };
+      setTimeout(() => tryExtract(5), 50);
+    } catch(e) {
+      if (document.body.contains(div)) document.body.removeChild(div);
+      resolve('');
+    }
   });
 }
+
+// Compatibilidade: o painel de partilha e QR simples usa new QRCode(container, {...})
+// Essa função não precisa de alteração pois qrcodejs suporta diretamente
 
 // Constrói o HTML do cartão de visita com o QR já embutido como <img>
 function buildBusinessCardHTML(card, qrDataUrl) {
@@ -481,8 +518,8 @@ async function renderBusinessCardWithQR() {
   container.style.display = 'block';
   container.innerHTML = buildBusinessCardHTML(card, qrDataUrl);
 
-  // Aguarda imagens carregarem (logo externo)
-  await new Promise(resolve => setTimeout(resolve, 300));
+  // Aguarda imagens carregarem (logo externo) e DOM estabilizar
+  await new Promise(resolve => setTimeout(resolve, 500));
 
   return container;
 }
@@ -1042,7 +1079,7 @@ async function downloadCardPNG() {
   if (!container) return;
   container.style.display = 'block';
   container.innerHTML = buildEditorCardHTML(tempCard, qrDataUrl);
-  await new Promise(r => setTimeout(r, 200));
+  await new Promise(r => setTimeout(r, 500));
   try {
     const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff', allowTaint: true });
     const link = document.createElement('a');
@@ -1069,7 +1106,7 @@ async function downloadCardPDF() {
   if (!container) return;
   container.style.display = 'block';
   container.innerHTML = buildEditorCardHTML(tempCard, qrDataUrl);
-  await new Promise(r => setTimeout(r, 200));
+  await new Promise(r => setTimeout(r, 500));
   try {
     const canvas = await html2canvas(container, { scale: 2, useCORS: true, backgroundColor: '#ffffff', allowTaint: true });
     const imgData = canvas.toDataURL('image/png');
